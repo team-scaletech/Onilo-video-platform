@@ -17,7 +17,7 @@ export const FormOverlay: React.FC<FormOverlayProps> = ({
   data,
   onClose,
   onResumeVideo,
-}) => {
+}: FormOverlayProps) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);

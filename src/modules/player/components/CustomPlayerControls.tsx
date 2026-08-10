@@ -18,6 +18,7 @@ import {
   Sparkles,
   Sliders,
   Check,
+  Languages,
 } from 'lucide-react';
 import { formatTime, cn } from '../../../utils';
 
@@ -49,31 +50,58 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
   const [doubleTapRipple, setDoubleTapRipple] = useState<'left' | 'right' | null>(null);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [showCaptionsMenu, setShowCaptionsMenu] = useState(false);
   const [selectedQuality, setSelectedQuality] = useState('Auto (1080p)');
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverPosition, setHoverPosition] = useState<number>(0);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
+  const [activeLanguage, setActiveLanguage] = useState<'en' | 'de' | 'off'>('en');
 
-  const handleToggleSubtitles = () => {
+  const handleSelectCaptionTrack = (lang: 'en' | 'de' | 'off') => {
+    setActiveLanguage(lang);
+    setShowCaptionsMenu(false);
+
     if (player && player.textTracks) {
       const tracks = Array.from(player.textTracks).filter(Boolean);
-      const activeTrack = tracks.find((t) => t && t.mode === 'showing');
-      if (activeTrack) {
+      if (lang === 'off') {
         tracks.forEach((t) => {
           if (t) t.mode = 'disabled';
         });
         setSubtitlesEnabled(false);
       } else {
-        const subTrack =
-          tracks.find((t) => t && (t.kind === 'subtitles' || t.kind === 'captions')) || tracks[0];
-        if (subTrack) {
-          subTrack.mode = 'showing';
+        let matched = false;
+        tracks.forEach((t) => {
+          if (!t) return;
+          const trackItem = t as any;
+          const trackLang = String(trackItem.language || '').toLowerCase();
+          const trackLabel = String(trackItem.label || '').toLowerCase();
+
+          const isMatch =
+            lang === 'en'
+              ? trackLang.includes('en') || trackLabel.includes('english')
+              : trackLang.includes('de') || trackLabel.includes('deutsch') || trackLabel.includes('german');
+
+          if (isMatch) {
+            t.mode = 'showing';
+            matched = true;
+          } else {
+            t.mode = 'disabled';
+          }
+        });
+
+        if (!matched && tracks.length > 0) {
+          const fallbackIdx = lang === 'de' ? 1 : 0;
+          if (tracks[fallbackIdx]) {
+            tracks[fallbackIdx].mode = 'showing';
+          } else if (tracks[0]) {
+            tracks[0].mode = 'showing';
+          }
         }
         setSubtitlesEnabled(true);
       }
     } else {
-      setSubtitlesEnabled((prev) => !prev);
+      setSubtitlesEnabled(lang !== 'off');
     }
   };
 
@@ -87,7 +115,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     if (isPlaying) {
       idleTimerRef.current = setTimeout(() => {
-        if (!showSpeedMenu && !showSettingsMenu && !showVolumeSlider) {
+        if (!showSpeedMenu && !showSettingsMenu && !showVolumeSlider && !showCaptionsMenu) {
           setShowControls(false);
         }
       }, 3000);
@@ -99,7 +127,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
     return () => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
-  }, [isPlaying, showSpeedMenu, showSettingsMenu, showVolumeSlider]);
+  }, [isPlaying, showSpeedMenu, showSettingsMenu, showVolumeSlider, showCaptionsMenu]);
 
   // Keyboard Shortcuts Listener
   useEffect(() => {
@@ -449,20 +477,102 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
 
           {/* Right Actions Group */}
           <div className="flex items-center gap-1.5 sm:gap-3">
-            {/* Subtitles / CC Toggle */}
-            <button
-              onClick={handleToggleSubtitles}
-              className={cn(
-                'p-2 rounded-xl border text-xs transition-colors flex items-center gap-1',
-                subtitlesEnabled
-                  ? 'bg-cyanGlow/20 border-cyanGlow/40 text-cyanGlow'
-                  : 'bg-transparent border-transparent text-slate-400 hover:text-white'
-              )}
-              title="Subtitles/CC"
-            >
-              <Subtitles className="w-4 h-4" />
-              <span className="font-bold text-[10px] hidden sm:inline">CC</span>
-            </button>
+            {/* Subtitles / CC Language Selector Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowCaptionsMenu((prev) => !prev);
+                  setShowSpeedMenu(false);
+                  setShowSettingsMenu(false);
+                }}
+                className={cn(
+                  'p-2 rounded-xl border text-xs transition-colors flex items-center gap-1 font-semibold',
+                  subtitlesEnabled && activeLanguage !== 'off'
+                    ? 'bg-cyanGlow/20 border-cyanGlow/40 text-cyanGlow'
+                    : 'bg-transparent border-white/10 text-slate-400 hover:text-white'
+                )}
+                title="Captions / Subtitles Language"
+              >
+                <Subtitles className="w-4 h-4" />
+                <span className="font-bold text-[10px] hidden sm:inline uppercase">
+                  {subtitlesEnabled && activeLanguage !== 'off' ? activeLanguage.toUpperCase() : 'CC'}
+                </span>
+              </button>
+
+              <AnimatePresence>
+                {showCaptionsMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute bottom-12 right-0 w-48 p-2 rounded-2xl bg-slate-950/95 border border-white/15 backdrop-blur-2xl shadow-2xl z-40 space-y-1"
+                  >
+                    <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                      <span>Subtitles / CC</span>
+                      <Languages className="w-3.5 h-3.5 text-cyanGlow" />
+                    </div>
+
+                    {/* Option: Off */}
+                    <button
+                      onClick={() => handleSelectCaptionTrack('off')}
+                      className={cn(
+                        'w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center justify-between',
+                        !subtitlesEnabled || activeLanguage === 'off'
+                          ? 'bg-white/10 text-white font-bold'
+                          : 'text-slate-400 hover:bg-white/10 hover:text-white'
+                      )}
+                    >
+                      <span>Off</span>
+                      {(!subtitlesEnabled || activeLanguage === 'off') && (
+                        <Check className="w-3.5 h-3.5 text-cyanGlow" />
+                      )}
+                    </button>
+
+                    {/* Option 1: English */}
+                    <button
+                      onClick={() => handleSelectCaptionTrack('en')}
+                      className={cn(
+                        'w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center justify-between',
+                        subtitlesEnabled && activeLanguage === 'en'
+                          ? 'bg-brand-600/30 text-cyanGlow font-bold border border-brand-500/40'
+                          : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">
+                          EN
+                        </span>
+                        <span>English</span>
+                      </div>
+                      {subtitlesEnabled && activeLanguage === 'en' && (
+                        <Check className="w-3.5 h-3.5 text-cyanGlow" />
+                      )}
+                    </button>
+
+                    {/* Option 2: German */}
+                    <button
+                      onClick={() => handleSelectCaptionTrack('de')}
+                      className={cn(
+                        'w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center justify-between',
+                        subtitlesEnabled && activeLanguage === 'de'
+                          ? 'bg-brand-600/30 text-cyanGlow font-bold border border-brand-500/40'
+                          : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">
+                          DE
+                        </span>
+                        <span>Deutsch (German)</span>
+                      </div>
+                      {subtitlesEnabled && activeLanguage === 'de' && (
+                        <Check className="w-3.5 h-3.5 text-cyanGlow" />
+                      )}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Playback Speed Menu Button */}
             <div className="relative">

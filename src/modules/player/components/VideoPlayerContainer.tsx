@@ -6,7 +6,7 @@ import { usePlayer } from '../../../hooks';
 import { usePlayerProgress } from '../../../context/PlayerProgressContext';
 import { TimelineEvent } from '../engine/TimelineEngine';
 
-const DEFAULT_TEXT_TRACKS = [
+export const DEFAULT_TEXT_TRACKS = [
   {
     src: 'https://files.vidstack.io/sprite-fight/subs/english.vtt',
     label: 'English',
@@ -15,9 +15,9 @@ const DEFAULT_TEXT_TRACKS = [
     default: true,
   },
   {
-    src: 'https://files.vidstack.io/sprite-fight/subs/spanish.vtt',
-    label: 'Spanish',
-    language: 'es-ES',
+    src: 'https://files.vidstack.io/sprite-fight/subs/german.vtt',
+    label: 'Deutsch (German)',
+    language: 'de-DE',
     kind: 'subtitles' as const,
   },
 ];
@@ -113,7 +113,9 @@ const SAMPLE_TIMELINE_EVENTS: TimelineEvent[] = [
   },
 ];
 
-export const VideoPlayerContainer: React.FC<VideoPlayerContainerProps> = ({ video }) => {
+export const VideoPlayerContainer: React.FC<VideoPlayerContainerProps> = ({
+  video,
+}: VideoPlayerContainerProps) => {
   const playerRef = useRef<VideoPlayerRef>(null);
   const { setCurrentTime, setDuration, setIsPlaying, currentTime, duration } = usePlayer();
   const { saveProgress } = usePlayerProgress();

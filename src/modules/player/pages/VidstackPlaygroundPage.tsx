@@ -125,6 +125,12 @@ export const VidstackPlaygroundPage: React.FC = () => {
                       kind: 'subtitles',
                       default: true,
                     },
+                    {
+                      src: 'https://files.vidstack.io/sprite-fight/subs/german.vtt',
+                      label: 'Deutsch (German) CC',
+                      language: 'de-DE',
+                      kind: 'subtitles',
+                    },
                   ]
                 : []
             }

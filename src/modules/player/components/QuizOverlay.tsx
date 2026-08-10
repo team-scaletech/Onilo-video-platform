@@ -12,7 +12,11 @@ export interface QuizOverlayProps {
   onResumeVideo?: () => void;
 }
 
-export const QuizOverlay: React.FC<QuizOverlayProps> = ({ marker, onClose, onResumeVideo }) => {
+export const QuizOverlay: React.FC<QuizOverlayProps> = ({
+  marker,
+  onClose,
+  onResumeVideo,
+}: QuizOverlayProps) => {
   const quiz = marker.quiz;
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
