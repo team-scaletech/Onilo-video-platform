@@ -19,10 +19,23 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          vidstack: ['@vidstack/react'],
-          framer: ['framer-motion'],
+        // Rolldown (this project's bundler as of Vite 8) only supports the function form of
+        // manualChunks, not Rollup's older { chunkName: [...moduleIds] } object shorthand --
+        // same chunking groups as before, just expressed as id-matching instead. Module ids
+        // are normalized to forward slashes by the bundler regardless of host OS, so match
+        // against '/' literally rather than path.sep (which is '\' on Windows and never
+        // matches here).
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('/node_modules/@vidstack/react/')) return 'vidstack';
+          if (id.includes('/node_modules/framer-motion/')) return 'framer';
+          if (
+            id.includes('/node_modules/react/') ||
+            id.includes('/node_modules/react-dom/') ||
+            id.includes('/node_modules/react-router-dom/')
+          ) {
+            return 'vendor';
+          }
         },
       },
     },
