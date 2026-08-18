@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 export interface VideoWatchProgress {
   videoId: string;
@@ -38,7 +38,7 @@ export const PlayerProgressProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [watchHistory]);
 
-  const saveProgress = (videoId: string, currentTime: number, duration: number) => {
+  const saveProgress = useCallback((videoId: string, currentTime: number, duration: number) => {
     if (!videoId || duration <= 0) return;
     const completedPercent = Math.min(100, Math.floor((currentTime / duration) * 100));
     const isCompleted = completedPercent >= 90;
@@ -54,19 +54,22 @@ export const PlayerProgressProvider: React.FC<{ children: React.ReactNode }> = (
         lastUpdated: new Date().toISOString(),
       },
     }));
-  };
+  }, []);
 
-  const getProgress = (videoId: string): VideoWatchProgress | null => {
-    return watchHistory[videoId] || null;
-  };
+  const getProgress = useCallback(
+    (videoId: string): VideoWatchProgress | null => {
+      return watchHistory[videoId] || null;
+    },
+    [watchHistory],
+  );
 
-  const clearProgress = (videoId: string) => {
+  const clearProgress = useCallback((videoId: string) => {
     setWatchHistory((prev) => {
       const copy = { ...prev };
       delete copy[videoId];
       return copy;
     });
-  };
+  }, []);
 
   return (
     <PlayerProgressContext.Provider

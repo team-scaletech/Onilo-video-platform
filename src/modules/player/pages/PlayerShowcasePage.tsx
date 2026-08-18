@@ -2,19 +2,31 @@ import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   History, Layers,
-  HelpCircle, ShoppingBag, Megaphone, BarChart3, Gamepad2, Mail, Play
+  HelpCircle, ShoppingBag, Megaphone, BarChart3, Gamepad2, Mail, MapPin, Play
 } from 'lucide-react';
 import { VideoPlayerContainer } from '../components/VideoPlayerContainer';
 import { TimelineControls } from '../components/TimelineControls';
+import { getTimelineEventsForVideo } from '../data/mockTimelineEvents';
+import { TimelineEventType } from '../engine/TimelineEngine';
 import { usePlayer } from '../../../hooks';
 import { usePlayerProgress } from '../../../context/PlayerProgressContext';
 import { MOCK_VIDEOS } from '../../../constants';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 
+const TIMELINE_EVENT_DISPLAY: Record<TimelineEventType, { icon: typeof HelpCircle; color: string }> = {
+  quiz: { icon: HelpCircle, color: 'text-amber-400' },
+  product_card: { icon: ShoppingBag, color: 'text-cyanGlow' },
+  cta: { icon: Megaphone, color: 'text-purple-400' },
+  survey: { icon: BarChart3, color: 'text-blue-400' },
+  mini_game: { icon: Gamepad2, color: 'text-emerald-400' },
+  form: { icon: Mail, color: 'text-pink-400' },
+  hotspot: { icon: MapPin, color: 'text-cyanGlow' },
+};
+
 export const PlayerShowcasePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { currentVideo, setCurrentVideo, currentTime, duration } = usePlayer();
+  const { currentVideo, setCurrentVideo, currentTime, duration, playerControls } = usePlayer();
   const { getProgress } = usePlayerProgress();
 
   useEffect(() => {
@@ -26,20 +38,15 @@ export const PlayerShowcasePage: React.FC = () => {
 
   const currentProgress = getProgress(currentVideo.id);
 
-  const timelineItems = [
-    { time: 15, label: 'Quiz Overlay', type: 'quiz', icon: HelpCircle, color: 'text-amber-400' },
-    { time: 35, label: 'Shoppable Product Card', type: 'product', icon: ShoppingBag, color: 'text-cyanGlow' },
-    { time: 60, label: 'Call-To-Action Popup', type: 'cta', icon: Megaphone, color: 'text-purple-400' },
-    { time: 90, label: 'Live Poll / Survey', type: 'survey', icon: BarChart3, color: 'text-blue-400' },
-    { time: 120, label: 'Interactive Mini-Game', type: 'game', icon: Gamepad2, color: 'text-emerald-400' },
-    { time: 150, label: 'Lead Capture Form', type: 'form', icon: Mail, color: 'text-pink-400' },
-  ];
+  const timelineEvents = getTimelineEventsForVideo(currentVideo.id);
+  const timelineItems = timelineEvents.map((event) => ({
+    time: event.timestamp,
+    label: event.title,
+    ...TIMELINE_EVENT_DISPLAY[event.type],
+  }));
 
   const handleSeekTo = (seekTime: number) => {
-    const player = document.querySelector('media-player') as any;
-    if (player) {
-      player.currentTime = seekTime;
-    }
+    playerControls?.seek(seekTime);
   };
 
   return (
@@ -70,7 +77,7 @@ export const PlayerShowcasePage: React.FC = () => {
           <TimelineControls
             duration={duration || currentVideo.duration}
             currentTime={currentTime}
-            markers={currentVideo.interactiveMarkers}
+            events={timelineEvents}
             onSeek={handleSeekTo}
           />
 

@@ -1,12 +1,15 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { InteractiveMarker, PlayerState, VideoMetadata } from '../types';
+import { VideoPlayerRef } from '../components/ui/VideoPlayer';
 
 interface PlayerContextType extends PlayerState {
   currentVideo: VideoMetadata | null;
   activeQuizMarker: InteractiveMarker | null;
   activeHotspotMarker: InteractiveMarker | null;
-  
+  playerControls: VideoPlayerRef | null;
+
   setCurrentVideo: (video: VideoMetadata) => void;
+  setPlayerControls: (controls: VideoPlayerRef | null) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -31,9 +34,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [activeHotspotMarker, setActiveHotspotMarkerState] = useState<InteractiveMarker | null>(null);
   const [userScore, setUserScoreState] = useState<number>(0);
   const [playbackQuality] = useState<string>('1080p');
+  const [playerControls, setPlayerControlsState] = useState<VideoPlayerRef | null>(null);
 
   const setCurrentVideo = useCallback((video: VideoMetadata) => {
     setCurrentVideoState(video);
+  }, []);
+
+  const setPlayerControls = useCallback((controls: VideoPlayerRef | null) => {
+    setPlayerControlsState(controls);
   }, []);
 
   const setCurrentTime = useCallback((time: number) => {
@@ -82,7 +90,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         activeHotspotMarker,
         userScore,
         playbackQuality,
+        playerControls,
         setCurrentVideo,
+        setPlayerControls,
         setCurrentTime,
         setDuration,
         setIsPlaying,

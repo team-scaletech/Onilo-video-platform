@@ -1,10 +1,12 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { VideoMetadata } from '../../../types';
 import { VideoPlayer, VideoPlayerRef } from '../../../components/ui/VideoPlayer';
 import { InteractiveOverlayEngine } from './InteractiveOverlayEngine';
+import { ResumePlaybackBanner } from './ResumePlaybackBanner';
 import { usePlayer } from '../../../hooks';
 import { usePlayerProgress } from '../../../context/PlayerProgressContext';
-import { TimelineEvent } from '../engine/TimelineEngine';
+import { getTimelineEventsForVideo } from '../data/mockTimelineEvents';
+import { analyticsService } from '../../../services/analyticsService';
 
 export const DEFAULT_TEXT_TRACKS = [
   {
@@ -26,196 +28,170 @@ export interface VideoPlayerContainerProps {
   video: VideoMetadata;
 }
 
-const SAMPLE_TIMELINE_EVENTS: TimelineEvent[] = [
-  {
-    id: 'evt-quiz-15',
-    timestamp: 15,
-    type: 'quiz',
-    title: 'Knowledge Check Quiz',
-    pauseOnTrigger: true,
-    data: {
-      id: 'quiz-15',
-      question: 'What is the primary benefit of HLS Adaptive Bitrate Streaming?',
-      points: 50,
-      options: [
-        { id: 'opt-1', text: 'Dynamically adjusts video quality based on network speed', isCorrect: true },
-        { id: 'opt-2', text: 'Increases file size on server', isCorrect: false },
-        { id: 'opt-3', text: 'Disables video controls', isCorrect: false },
-        { id: 'opt-4', text: 'Only works on mobile phones', isCorrect: false },
-      ],
-      explanation:
-        'HLS dynamically switches video quality levels based on bandwidth to prevent buffering stall.',
-    },
-  },
-  {
-    id: 'evt-prod-35',
-    timestamp: 35,
-    type: 'product_card',
-    title: 'Shoppable Gear Spotlight',
-    pauseOnTrigger: true,
-    data: {
-      title: 'Pro Interactive Video Suite v2.0',
-      price: '$149.00',
-      originalPrice: '$299.00',
-      image:
-        'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800&auto=format&fit=crop&q=80',
-      description: 'Enterprise React + Vidstack interactive video platform design system and engine.',
-    },
-  },
-  {
-    id: 'evt-cta-60',
-    timestamp: 60,
-    type: 'cta',
-    title: 'Special Platform Discount',
-    pauseOnTrigger: true,
-    data: {
-      title: 'Claim 50% Off Onilo Platform',
-      description: 'Upgrade your video experience today with our billion-dollar design system.',
-      buttonText: 'Claim 50% Discount',
-      promoCode: 'ONILO50OFF',
-      linkUrl: 'https://onilo.io',
-    },
-  },
-  {
-    id: 'evt-survey-90',
-    timestamp: 90,
-    type: 'survey',
-    title: 'Stream Quality Feedback',
-    pauseOnTrigger: true,
-    data: {
-      question: 'How would you rate the video playback experience so far?',
-      options: ['Ultra Smooth HD', 'Good Quality', 'Minor Buffering', 'Needs Optimization'],
-    },
-  },
-  {
-    id: 'evt-game-120',
-    timestamp: 120,
-    type: 'mini_game',
-    title: 'Tap the Target Mini-Game',
-    pauseOnTrigger: true,
-    data: {
-      title: 'Interactive Target Blast',
-      description: 'Tap 3 glowing targets to unlock an instant reward coupon!',
-      couponCode: 'GAMER2026',
-    },
-  },
-  {
-    id: 'evt-form-150',
-    timestamp: 150,
-    type: 'form',
-    title: 'Lead Access Form',
-    pauseOnTrigger: true,
-    data: {
-      title: 'Unlock Platform Source Code',
-      subtitle: 'Enter your name and work email to download the full interactive project repo.',
-      buttonText: 'Download Repository',
-    },
-  },
-];
-
-export const VideoPlayerContainer: React.FC<VideoPlayerContainerProps> = ({
-  video,
-}: VideoPlayerContainerProps) => {
+export const VideoPlayerContainer: React.FC<VideoPlayerContainerProps> = ({ video }: VideoPlayerContainerProps) => {
   const playerRef = useRef<VideoPlayerRef>(null);
-  const { setCurrentTime, setDuration, setIsPlaying, currentTime, duration } = usePlayer();
-  const { saveProgress } = usePlayerProgress();
+  const { setCurrentTime, setDuration, setIsPlaying, setPlayerControls, currentTime, duration } = usePlayer();
+  const { saveProgress, getProgress } = usePlayerProgress();
+  const timelineEvents = getTimelineEventsForVideo(video.id);
 
-  // const [showResumeBanner, setShowResumeBanner] = useState(false);
-  // const [savedTime, setSavedTime] = useState(0);
+  const [showResumeBanner, setShowResumeBanner] = useState(false);
+  const [savedTime, setSavedTime] = useState(0);
+  const hasFiredCompletionRef = useRef(false);
 
-  // Check saved progress on load
-  // useEffect(() => {
-  //   const saved = getProgress(video.id);
-  //   if (saved && saved.currentTime > 5 && !saved.isCompleted) {
-  //     setSavedTime(saved.currentTime);
-  //     setShowResumeBanner(true);
-  //   }
-  // }, [video.id, getProgress]);
+  // Latest currentTime/duration for the handlers below to read without needing currentTime
+  // or duration in their own dependency arrays -- see the useCallback comment further down.
+  const currentTimeRef = useRef(currentTime);
+  const durationRef = useRef(duration);
 
-  // Periodic watch progress auto-save (every 5 seconds)
+  const videoSrc = useMemo(
+    () => [
+      {
+        src: video.hlsUrl || video.srcUrl,
+        type: 'application/x-mpegURL' as const,
+      },
+    ],
+    [video.hlsUrl, video.srcUrl],
+  );
+
+  // Publish this player instance's controls so sibling components (timeline markers,
+  // the configured-overlays sidebar) can seek without reaching into the DOM.
+  useEffect(() => {
+    setPlayerControls(playerRef.current);
+    return () => setPlayerControls(null);
+  }, [setPlayerControls]);
+
+  // Check saved progress once per video load. Deliberately excludes `getProgress` from the
+  // deps: it's recreated on every PlayerProgressProvider render (including the periodic
+  // auto-save below), which would otherwise re-run this check mid-playback and pop the
+  // banner back up right after it's dismissed.
+  useEffect(() => {
+    const saved = getProgress(video.id);
+    if (saved && saved.currentTime > 5 && !saved.isCompleted) {
+      setSavedTime(saved.currentTime);
+      setShowResumeBanner(true);
+    } else {
+      setShowResumeBanner(false);
+    }
+    hasFiredCompletionRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [video.id]);
+
+  // Periodic watch progress auto-save + engagement heartbeat (every 5 seconds), plus a
+  // one-time completion event once 90% of the video has been watched.
   useEffect(() => {
     if (currentTime > 0 && duration > 0 && Math.floor(currentTime) % 5 === 0) {
       saveProgress(video.id, currentTime, duration);
+      analyticsService.track('video_progress', video.id, currentTime, {
+        percentWatched: Math.min(100, Math.floor((currentTime / duration) * 100)),
+      });
+    }
+
+    if (duration > 0 && currentTime / duration >= 0.9 && !hasFiredCompletionRef.current) {
+      hasFiredCompletionRef.current = true;
+      analyticsService.track('video_completed', video.id, currentTime, { reason: 'watched_90_percent' });
     }
   }, [currentTime, duration, video.id, saveProgress]);
 
-  const handleTimeUpdate = (detail: { currentTime: number; duration: number }) => {
-    setCurrentTime(detail.currentTime);
-  };
+  const handleTimeUpdate = useCallback(
+    (detail: { currentTime: number; duration: number }) => {
+      currentTimeRef.current = detail.currentTime;
+      setCurrentTime(detail.currentTime);
+    },
+    [setCurrentTime],
+  );
 
-  const handleDurationChange = (detail: number) => {
-    setDuration(detail);
-  };
+  const handleDurationChange = useCallback(
+    (detail: number) => {
+      durationRef.current = detail;
+      setDuration(detail);
+    },
+    [setDuration],
+  );
 
-  const handlePlay = () => setIsPlaying(true);
-  const handlePause = () => {
+  const handlePlay = useCallback(() => {
+    setIsPlaying(true);
+    analyticsService.track('video_play', video.id, currentTimeRef.current);
+  }, [setIsPlaying, video.id]);
+
+  const handlePause = useCallback(() => {
     setIsPlaying(false);
-    if (currentTime > 0 && duration > 0) {
-      saveProgress(video.id, currentTime, duration);
+    if (currentTimeRef.current > 0 && durationRef.current > 0) {
+      saveProgress(video.id, currentTimeRef.current, durationRef.current);
     }
-  };
+    analyticsService.track('video_pause', video.id, currentTimeRef.current);
+  }, [setIsPlaying, video.id, saveProgress]);
 
-  const pauseVideo = () => {
+  const handleSeeked = useCallback(
+    (time: number) => {
+      analyticsService.track('video_seek', video.id, time);
+    },
+    [video.id],
+  );
+
+  const handleEnded = useCallback(() => {
+    if (!hasFiredCompletionRef.current) {
+      hasFiredCompletionRef.current = true;
+      analyticsService.track('video_completed', video.id, durationRef.current, { reason: 'ended' });
+    }
+  }, [video.id]);
+
+  const handleError = useCallback((event: any) => {
+    console.error('VIDSTACK ERROR', event);
+  }, []);
+
+  const pauseVideo = useCallback(() => {
     playerRef.current?.pause();
-  };
+  }, []);
 
-  const resumeVideo = () => {
+  const resumeVideo = useCallback(() => {
     playerRef.current?.play();
+  }, []);
+
+  const handleResumePlayback = () => {
+    playerRef.current?.seek(savedTime);
+    playerRef.current?.play();
+    setShowResumeBanner(false);
   };
 
-  // const handleResumePlayback = () => {
-  //   if (playerRef.current) {
-  //     playerRef.current.seek(savedTime);
-  //     playerRef.current.play();
-  //   }
-  //   setShowResumeBanner(false);
-  // };
-
-  // const handleStartOver = () => {
-  //   if (playerRef.current) {
-  //     playerRef.current.seek(0);
-  //     playerRef.current.play();
-  //   }
-  //   setShowResumeBanner(false);
-  // };
+  const handleStartOver = () => {
+    playerRef.current?.seek(0);
+    playerRef.current?.play();
+    setShowResumeBanner(false);
+  };
 
   return (
     <div className="relative">
       {/* Resume Playback Prompt Banner */}
-      {/* {showResumeBanner && (
+      {showResumeBanner && (
         <ResumePlaybackBanner
           savedTime={savedTime}
           onResume={handleResumePlayback}
           onStartOver={handleStartOver}
           onClose={() => setShowResumeBanner(false)}
         />
-      )} */}
+      )}
 
       <VideoPlayer
         ref={playerRef}
         title={video.title}
-        src={[
-          {
-            src: video.hlsUrl || video.srcUrl,
-            type: 'application/x-mpegURL',
-          },
-        ]}
+        src={videoSrc}
         poster={video.posterUrl}
         aspectRatio="16/9"
         useCustomUI
         textTracks={DEFAULT_TEXT_TRACKS}
         onTimeUpdate={handleTimeUpdate}
         onDurationChange={handleDurationChange}
+        onSeeked={handleSeeked}
+        onEnded={handleEnded}
         onPlay={handlePlay}
         onPause={handlePause}
-        onError={(event) => {
-          console.error("VIDSTACK ERROR", event);
-        }}
+        onError={handleError}
       >
-        {/* Interactive Layer Overlay Engine (Quiz, Survey, CTA, Product, Form, Mini-Game) */}
+        {/* Interactive Layer Overlay Engine (Quiz, Survey, CTA, Product, Form, Mini-Game, Hotspot) */}
         <InteractiveOverlayEngine
-          events={SAMPLE_TIMELINE_EVENTS}
+          events={timelineEvents}
           currentTime={currentTime}
+          videoId={video.id}
           onPauseVideo={pauseVideo}
           onResumeVideo={resumeVideo}
         />

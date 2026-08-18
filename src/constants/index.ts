@@ -10,8 +10,11 @@ export const MOCK_VIDEOS: VideoMetadata[] = [
   {
     id: 'vid-001',
     title: 'Onilo Boardstory Showcase — Digital Reading & Interaction',
-    description: 'Experience digitized picture books with animated illustrations, interactive comprehension quizzes, vocabulary aids, and teaching materials.',
+    description:
+      'Experience digitized picture books with animated illustrations, interactive comprehension quizzes, vocabulary aids, and teaching materials.',
     posterUrl: 'https://image.mux.com/VZ39vi0200adypIeePhn00VAdGGyvd8qnRe/thumbnail.jpg?time=15',
+    // srcUrl: 'https://storage.googleapis.com/shaka-demo-assets/bbb-dark-truths-hls/hls.m3u8',
+    // hlsUrl: 'https://storage.googleapis.com/shaka-demo-assets/bbb-dark-truths-hls/hls.m3u8',
     srcUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
     hlsUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
     duration: 610,
@@ -74,6 +77,7 @@ export const MOCK_VIDEOS: VideoMetadata[] = [
     title: 'Enterprise Product Onboarding & Interactive Assessment',
     description: 'Train your workforce using branch-based interactive video modules and score analytics.',
     posterUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&auto=format&fit=crop&q=80',
+    // srcUrl: 'https://storage.googleapis.com/shaka-demo-assets/bbb-dark-truths-hls/hls.m3u8',
     srcUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
     duration: 340,
     viewsCount: 9430,

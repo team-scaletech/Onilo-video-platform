@@ -1,14 +1,9 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import {
-  MediaPlayer,
-  MediaProvider,
-  Track,
-  Captions,
-  MediaPlayerInstance,
-} from '@vidstack/react';
+import React, { forwardRef, useImperativeHandle, useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { MediaPlayer, MediaProvider, Track, Captions, MediaPlayerInstance } from '@vidstack/react';
 import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default';
 import { CustomPlayerControls } from '../../modules/player/components/CustomPlayerControls';
-import { cn } from '../../utils';
+import { cn, isIOS } from '../../utils';
 
 export interface TextTrackItem {
   src: string;
@@ -41,6 +36,7 @@ export interface VideoPlayerProps {
   onEnded?: () => void;
   onTimeUpdate?: (detail: { currentTime: number; duration: number }) => void;
   onDurationChange?: (duration: number) => void;
+  onSeeked?: (time: number) => void;
   onVolumeChange?: (detail: { volume: number; muted: boolean }) => void;
   onFullscreenChange?: (isFullscreen: boolean) => void;
   onPiPChange?: (isPiP: boolean) => void;
@@ -80,15 +76,61 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
       onEnded,
       onTimeUpdate,
       onDurationChange,
+      onSeeked,
       onVolumeChange,
       onFullscreenChange,
       onPiPChange,
       onRateChange,
       onError,
     },
-    ref
+    ref,
   ) => {
     const playerRef = useRef<MediaPlayerInstance>(null);
+
+    // iOS Safari can only fullscreen the bare <video> element, which hides all custom
+    // controls and overlays. On iOS we skip the native Fullscreen API entirely and instead
+    // expand this wrapper to fill the viewport via CSS, keeping the video inline so every
+    // sibling (controls, quiz/hotspot overlays) keeps rendering on top of it.
+    const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
+
+    useEffect(() => {
+      if (!isPseudoFullscreen) return;
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = previousOverflow;
+      };
+    }, [isPseudoFullscreen]);
+
+    const togglePseudoFullscreen = () => setIsPseudoFullscreen((prev) => !prev);
+
+    const handleMediaTimeUpdate = useCallback(
+      (detail: { currentTime: number }) => {
+        if (onTimeUpdate) {
+          onTimeUpdate({
+            currentTime: detail.currentTime,
+            duration: playerRef.current?.duration || 0,
+          });
+        }
+      },
+      [onTimeUpdate],
+    );
+
+    const handleMediaVolumeChange = useCallback(
+      (detail: { volume: number; muted: boolean }) => {
+        if (onVolumeChange) {
+          onVolumeChange({ volume: detail.volume, muted: detail.muted });
+        }
+      },
+      [onVolumeChange],
+    );
+
+    const handleHlsInstance = useCallback((hls: any) => {
+      if (!hls?.config) return;
+      hls.config.maxBufferHole = 0.5; // default 0.1s
+      hls.config.highBufferWatchdogPeriod = 1; // default 2s
+      hls.config.nudgeOffset = 0.2; // default 0.1s
+    }, []);
 
     useImperativeHandle(ref, () => ({
       play: () => playerRef.current?.play(),
@@ -104,6 +146,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         }
       },
       toggleFullscreen: () => {
+        if (isIOS()) {
+          togglePseudoFullscreen();
+          return;
+        }
         if (playerRef.current) {
           return playerRef.current.enterFullscreen();
         }
@@ -116,11 +162,12 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
       getMediaPlayer: () => playerRef.current,
     }));
 
-    return (
+    const playerElement = (
       <div
         className={cn(
           'relative w-full rounded-3xl overflow-hidden border border-white/10 bg-slate-950 shadow-2xl shadow-brand-500/10 group',
-          className
+          isPseudoFullscreen && 'fixed inset-0 z-[9999] !w-screen !h-screen !max-w-none rounded-none border-none',
+          className,
         )}
       >
         <MediaPlayer
@@ -136,27 +183,15 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           onPlay={onPlay}
           onPause={onPause}
           onEnded={onEnded}
-          onTimeUpdate={(detail) => {
-            if (onTimeUpdate) {
-              onTimeUpdate({
-                currentTime: detail.currentTime,
-                duration: playerRef.current?.duration || 0,
-              });
-            }
-          }}
+          onTimeUpdate={handleMediaTimeUpdate}
           onDurationChange={onDurationChange}
-          onVolumeChange={(detail) => {
-            if (onVolumeChange) {
-              onVolumeChange({
-                volume: detail.volume,
-                muted: detail.muted,
-              });
-            }
-          }}
+          onSeeked={onSeeked}
+          onVolumeChange={handleMediaVolumeChange}
           onFullscreenChange={onFullscreenChange}
           onPictureInPictureChange={onPiPChange}
           onRateChange={onRateChange}
           onError={onError}
+          onHlsInstance={handleHlsInstance}
           className="w-full h-full"
         >
           <MediaProvider>
@@ -177,23 +212,25 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           <Captions className="vds-captions absolute bottom-20 left-0 right-0 z-30 pointer-events-none text-center px-4 text-sm sm:text-base font-semibold text-white drop-shadow-lg" />
 
           {/* Render Either Custom Netflix/YouTube UI or Vidstack Default Layout */}
-          {controls && (
-            useCustomUI ? (
-              <CustomPlayerControls title={title} />
-            ) : (
-              <DefaultVideoLayout
-                icons={defaultLayoutIcons}
-                thumbnails={thumbnails}
+          {controls &&
+            (useCustomUI ? (
+              <CustomPlayerControls
+                title={title}
+                isPseudoFullscreen={isPseudoFullscreen}
+                onTogglePseudoFullscreen={togglePseudoFullscreen}
               />
-            )
-          )}
+            ) : (
+              <DefaultVideoLayout icons={defaultLayoutIcons} thumbnails={thumbnails} />
+            ))}
 
           {/* Children overlays (e.g. Interactive Hotspots, Quiz Prompts) */}
           {children}
         </MediaPlayer>
       </div>
     );
-  }
+
+    return isPseudoFullscreen ? createPortal(playerElement, document.body) : playerElement;
+  },
 );
 
 VideoPlayer.displayName = 'VideoPlayer';

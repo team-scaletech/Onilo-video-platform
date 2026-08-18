@@ -7,10 +7,13 @@ import { CTAOverlay } from './CTAOverlay';
 import { ProductCardOverlay } from './ProductCardOverlay';
 import { FormOverlay } from './FormOverlay';
 import { MiniGameOverlay } from './MiniGameOverlay';
+import { HotspotOverlay } from './HotspotOverlay';
+import { analyticsService } from '../../../services/analyticsService';
 
 export interface InteractiveOverlayEngineProps {
   events: TimelineEvent[];
   currentTime: number;
+  videoId: string;
   onPauseVideo?: () => void;
   onResumeVideo?: () => void;
 }
@@ -18,6 +21,7 @@ export interface InteractiveOverlayEngineProps {
 export const InteractiveOverlayEngine: React.FC<InteractiveOverlayEngineProps> = ({
   events,
   currentTime,
+  videoId,
   onPauseVideo,
   onResumeVideo,
 }) => {
@@ -34,10 +38,20 @@ export const InteractiveOverlayEngine: React.FC<InteractiveOverlayEngineProps> =
       if (triggeredEvent.pauseOnTrigger !== false) {
         onPauseVideo?.();
       }
+      analyticsService.track('interactive_event_triggered', videoId, triggeredEvent.timestamp, {
+        eventId: triggeredEvent.id,
+        eventType: triggeredEvent.type,
+      });
     });
-  }, [currentTime, onPauseVideo]);
+  }, [currentTime, onPauseVideo, videoId]);
 
   const handleClose = () => {
+    if (activeEvent) {
+      analyticsService.track('interactive_event_dismissed', videoId, currentTime, {
+        eventId: activeEvent.id,
+        eventType: activeEvent.type,
+      });
+    }
     setActiveEvent(null);
     onResumeVideo?.();
   };
@@ -100,6 +114,15 @@ export const InteractiveOverlayEngine: React.FC<InteractiveOverlayEngineProps> =
 
         {activeEvent.type === 'mini_game' && (
           <MiniGameOverlay
+            key={activeEvent.id}
+            data={activeEvent.data}
+            onClose={handleClose}
+            onResumeVideo={onResumeVideo}
+          />
+        )}
+
+        {activeEvent.type === 'hotspot' && (
+          <HotspotOverlay
             key={activeEvent.id}
             data={activeEvent.data}
             onClose={handleClose}

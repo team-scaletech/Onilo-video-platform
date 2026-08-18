@@ -19,17 +19,23 @@ import {
   Sliders,
   Check,
   Languages,
+  Activity,
 } from 'lucide-react';
-import { formatTime, cn } from '../../../utils';
+import { formatTime, cn, isIOS } from '../../../utils';
+import { StreamStatsPanel } from './StreamStatsPanel';
 
 export interface CustomPlayerControlsProps {
   title?: string;
   className?: string;
+  isPseudoFullscreen?: boolean;
+  onTogglePseudoFullscreen?: () => void;
 }
 
 export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
   title = 'Interactive Video Stream',
   className,
+  isPseudoFullscreen = false,
+  onTogglePseudoFullscreen,
 }) => {
   const player = useMediaPlayer();
 
@@ -44,6 +50,10 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
   const isPiP = useMediaState('pictureInPicture');
   const playbackRate = useMediaState('playbackRate');
   const buffered = useMediaState('buffered');
+  const quality = useMediaState('quality');
+  const qualities = useMediaState('qualities');
+  const autoQuality = useMediaState('autoQuality');
+  const canSetQuality = useMediaState('canSetQuality');
 
   // Controls UI state
   const [showControls, setShowControls] = useState(true);
@@ -51,7 +61,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showCaptionsMenu, setShowCaptionsMenu] = useState(false);
-  const [selectedQuality, setSelectedQuality] = useState('Auto (1080p)');
+  const [showStats, setShowStats] = useState(false);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverPosition, setHoverPosition] = useState<number>(0);
@@ -154,11 +164,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
           break;
         case 'KeyF':
           e.preventDefault();
-          if (isFullscreen) {
-            player.exitFullscreen();
-          } else {
-            player.enterFullscreen();
-          }
+          handleToggleFullscreen();
           break;
         case 'KeyM':
           e.preventDefault();
@@ -204,6 +210,18 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
   const triggerDoubleTapRipple = (side: 'left' | 'right') => {
     setDoubleTapRipple(side);
     setTimeout(() => setDoubleTapRipple(null), 650);
+  };
+
+  // On iOS, native fullscreen only applies to the <video> element and hides our custom UI,
+  // so we use the CSS-driven pseudo-fullscreen from VideoPlayer instead of Vidstack's API.
+  const handleToggleFullscreen = () => {
+    if (isIOS()) {
+      onTogglePseudoFullscreen?.();
+      return;
+    }
+    if (!player) return;
+    if (isFullscreen) player.exitFullscreen();
+    else player.enterFullscreen();
   };
 
   const togglePlayPause = () => {
@@ -274,6 +292,21 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
   const bufferPercent =
     duration > 0 && buffered.length > 0 ? (buffered.end(buffered.length - 1) / duration) * 100 : 0;
 
+  // Real HLS quality renditions reported by Vidstack, sorted highest-first, index preserved for switching
+  const qualityOptions = qualities
+    .map((q, index) => ({ ...q, sourceIndex: index }))
+    .sort((a, b) => b.height - a.height);
+
+  const handleSelectQuality = (sourceIndex: number) => {
+    player?.remoteControl.changeQuality(sourceIndex);
+    setShowSettingsMenu(false);
+  };
+
+  const handleSelectAutoQuality = () => {
+    player?.remoteControl.requestAutoQuality();
+    setShowSettingsMenu(false);
+  };
+
   return (
     <div
       ref={containerRef}
@@ -298,6 +331,9 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
           </h3>
         </div>
       </div>
+
+      {/* Live Stream Stats Panel */}
+      {showStats && <StreamStatsPanel />}
 
       {/* Center Play & Pause Interactive Overlay Button */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-auto">
@@ -395,9 +431,9 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
         </div>
 
         {/* Action Controls Bar */}
-        <div className="flex items-center justify-between text-white">
+        <div className="flex items-center justify-between gap-2 text-white">
           {/* Left Actions Group */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {/* Play/Pause Button */}
             <button
               onClick={togglePlayPause}
@@ -475,8 +511,9 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
             </div>
           </div>
 
-          {/* Right Actions Group */}
-          <div className="flex items-center gap-1.5 sm:gap-3">
+          {/* Secondary Controls Group — scrolls internally rather than pushing the pinned
+              group below off-screen if space runs out, so Settings/Fullscreen stay reachable */}
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 overflow-x-auto no-scrollbar">
             {/* Subtitles / CC Language Selector Dropdown */}
             <div className="relative">
               <button
@@ -621,7 +658,10 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                 )}
               </AnimatePresence>
             </div>
+          </div>
 
+          {/* Pinned Controls Group — always fully visible, never scrolled or clipped */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {/* Settings Gear Dropdown Menu */}
             <div className="relative">
               <button
@@ -630,7 +670,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                   setShowSpeedMenu(false);
                 }}
                 className="p-2 rounded-xl hover:bg-white/10 border border-white/10 text-xs text-slate-300 hover:text-white transition-colors"
-                title="Stream Settings"
+                title={`Stream Settings — ${autoQuality ? 'Auto' : quality ? `${quality.height}p` : 'Unknown'} quality`}
               >
                 <Settings className="w-4 h-4" />
               </button>
@@ -648,24 +688,71 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                       Stream Quality
                     </div>
 
-                    {['Auto (1080p)', '1080p Full HD', '720p HD', '480p SD', '360p Low'].map((q) => (
+                    {qualityOptions.length === 0 ? (
+                      <div className="px-3 py-1.5 text-xs text-slate-400">
+                        Adaptive (source-managed)
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={handleSelectAutoQuality}
+                          disabled={!canSetQuality}
+                          className={cn(
+                            'w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between disabled:opacity-50',
+                            autoQuality
+                              ? 'bg-brand-600/30 text-cyanGlow font-bold border border-brand-500/40'
+                              : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                          )}
+                        >
+                          <span>Auto{quality ? ` (${quality.height}p)` : ''}</span>
+                          {autoQuality && <Check className="w-3.5 h-3.5 text-cyanGlow" />}
+                        </button>
+
+                        {qualityOptions.map((q) => {
+                          const isSelected = !autoQuality && quality?.id === q.id;
+                          return (
+                            <button
+                              key={q.id}
+                              onClick={() => handleSelectQuality(q.sourceIndex)}
+                              disabled={!canSetQuality}
+                              className={cn(
+                                'w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between disabled:opacity-50',
+                                isSelected
+                                  ? 'bg-brand-600/30 text-cyanGlow font-bold border border-brand-500/40'
+                                  : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                              )}
+                            >
+                              <span>
+                                {q.height}p
+                                {q.bitrate ? ` • ${Math.round(q.bitrate / 1000)}kbps` : ''}
+                              </span>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-cyanGlow" />}
+                            </button>
+                          );
+                        })}
+                      </>
+                    )}
+
+                    <div className="pt-1 mt-1 border-t border-white/10">
                       <button
-                        key={q}
                         onClick={() => {
-                          setSelectedQuality(q);
+                          setShowStats((prev) => !prev);
                           setShowSettingsMenu(false);
                         }}
                         className={cn(
                           'w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between',
-                          selectedQuality === q
+                          showStats
                             ? 'bg-brand-600/30 text-cyanGlow font-bold border border-brand-500/40'
                             : 'text-slate-300 hover:bg-white/10 hover:text-white'
                         )}
                       >
-                        <span>{q}</span>
-                        {selectedQuality === q && <Check className="w-3.5 h-3.5 text-cyanGlow" />}
+                        <span className="flex items-center gap-1.5">
+                          <Activity className="w-3.5 h-3.5" />
+                          Stream Stats
+                        </span>
+                        {showStats && <Check className="w-3.5 h-3.5 text-cyanGlow" />}
                       </button>
-                    ))}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -678,7 +765,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                 if (isPiP) player.exitPictureInPicture();
                 else player.enterPictureInPicture();
               }}
-              className="p-2 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors hidden sm:block"
+              className="p-2 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors hidden sm:block shrink-0"
               title="Picture-in-Picture (P)"
             >
               <PictureInPicture className="w-4 h-4" />
@@ -686,15 +773,11 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
 
             {/* Fullscreen Toggle */}
             <button
-              onClick={() => {
-                if (!player) return;
-                if (isFullscreen) player.exitFullscreen();
-                else player.enterFullscreen();
-              }}
-              className="p-2.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
-              title={isFullscreen ? 'Exit Fullscreen (F)' : 'Fullscreen (F)'}
+              onClick={handleToggleFullscreen}
+              className="p-2.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center shrink-0"
+              title={isFullscreen || isPseudoFullscreen ? 'Exit Fullscreen (F)' : 'Fullscreen (F)'}
             >
-              {isFullscreen ? (
+              {isFullscreen || isPseudoFullscreen ? (
                 <Minimize className="w-4 h-4" />
               ) : (
                 <Maximize className="w-4 h-4" />

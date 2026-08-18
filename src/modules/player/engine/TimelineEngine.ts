@@ -1,11 +1,4 @@
-export type TimelineEventType =
-  | 'quiz'
-  | 'survey'
-  | 'cta'
-  | 'product_card'
-  | 'form'
-  | 'mini_game'
-  | 'hotspot';
+export type TimelineEventType = 'quiz' | 'survey' | 'cta' | 'product_card' | 'form' | 'mini_game' | 'hotspot';
 
 export interface TimelineEvent {
   id: string;
@@ -33,29 +26,45 @@ export class TimelineEngine {
   }
 
   public processTime(currentTime: number, onTriggerEvent: (event: TimelineEvent) => void) {
-    // Detect backward seek: reset triggered events occurring after currentTime
-    if (this.lastProcessedTime > 0 && currentTime < this.lastProcessedTime - 1.5) {
-      this.handleSeek(currentTime);
-    }
+    const previousTime = this.lastProcessedTime;
     this.lastProcessedTime = currentTime;
 
-    // Check for matching events in precision window (±0.6s)
-    for (const event of this.events) {
-      const timeDiff = Math.abs(event.timestamp - currentTime);
-      const isAlreadyTriggered = this.triggeredMap.get(event.id);
-
-      if (timeDiff <= 0.6 && !isAlreadyTriggered) {
-        this.triggeredMap.set(event.id, true);
-        onTriggerEvent(event);
-        break; // Trigger one event per tick to avoid overlay collision
-      }
+    const isBackwardSeek = previousTime >= 0 && currentTime < previousTime - 1.5;
+    if (isBackwardSeek) {
+      this.handleSeek(currentTime);
     }
+
+    const windowStart = !isBackwardSeek && previousTime >= 0 ? previousTime : currentTime - 0.6;
+    const windowEnd = currentTime + 0.6;
+
+    const crossed = this.events.filter(
+      (event) => !this.triggeredMap.get(event.id) && event.timestamp >= windowStart && event.timestamp <= windowEnd,
+    );
+
+    if (crossed.length === 0) return;
+
+    // Mark every crossed event as seen so none of them fire later out of context...
+    crossed.forEach((event) => this.triggeredMap.set(event.id, true));
+
+    // ...but only surface the one closest to where playback actually landed, so jumping
+    // over several events doesn't stack multiple overlays on top of each other.
+    const eventToShow = crossed.reduce((closest, event) =>
+      Math.abs(event.timestamp - currentTime) < Math.abs(closest.timestamp - currentTime) ? event : closest,
+    );
+    onTriggerEvent(eventToShow);
   }
 
   public handleSeek(newTime: number) {
-    // Reset triggered status for events scheduled after newTime if replayOnSeek is true
+    // Reset triggered status for events scheduled at-or-after newTime if replayOnSeek is true.
+    // Must be >=, not >: an event sitting exactly at newTime can already be marked triggered
+    // from an earlier forward jump that skipped over it without showing it (e.g. jumping
+    // straight from 0s to 190s marks every event in between as "seen" so it doesn't ambush
+    // the viewer later, even though only the closest one to 190s was actually shown). Landing
+    // a backward seek exactly on one of those skipped events -- clicking its marker directly
+    // -- is explicit user intent to see it, so it must be re-armed too, not just events
+    // strictly after the landing point.
     for (const event of this.events) {
-      if (event.timestamp > newTime && event.replayOnSeek !== false) {
+      if (event.timestamp >= newTime && event.replayOnSeek !== false) {
         this.triggeredMap.delete(event.id);
       }
     }
