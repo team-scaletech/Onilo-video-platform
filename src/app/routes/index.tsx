@@ -13,6 +13,9 @@ const PlayerShowcasePage = lazy(() =>
 const AdminDashboardPage = lazy(() =>
   import('../../modules/admin/pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
 );
+const AnalyticsPage = lazy(() =>
+  import('../../modules/analytics/pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage }))
+);
 const ProfilePage = lazy(() =>
   import('../../modules/profile/pages/ProfilePage').then((m) => ({ default: m.ProfilePage }))
 );
@@ -73,7 +76,7 @@ const router = createBrowserRouter([
         path: 'analytics',
         element: (
           <Suspense fallback={<LoadingSpinner size="lg" label="Loading Analytics Telemetry..." />}>
-            <AdminDashboardPage />
+            <AnalyticsPage />
           </Suspense>
         ),
       },

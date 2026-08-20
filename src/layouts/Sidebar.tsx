@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PlaySquare, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, PlaySquare, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils';
 
@@ -22,6 +22,11 @@ const NAV_ITEMS: NavItem[] = [
     path: '/player/vid-001',
     icon: <PlaySquare className="w-5 h-5" />,
     badge: 'LIVE',
+  },
+  {
+    name: 'Analytics',
+    path: '/analytics',
+    icon: <BarChart3 className="w-5 h-5" />,
   },
 ];
 
