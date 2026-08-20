@@ -19,7 +19,7 @@
   }
 
   .dark {
-    --bg-main: #090D16;
+    --bg-main: #090d16;
     --bg-card: #111827;
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
@@ -35,10 +35,17 @@
     color: var(--text-primary);
     font-family: 'Inter', sans-serif;
     overflow-x: hidden;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Outfit', 'Inter', sans-serif;
   }
 }
@@ -80,12 +87,7 @@
   }
 
   .skeleton-shimmer {
-    background: linear-gradient(
-      90deg,
-      var(--shimmer-start) 0%,
-      var(--shimmer-end) 50%,
-      var(--shimmer-start) 100%
-    );
+    background: linear-gradient(90deg, var(--shimmer-start) 0%, var(--shimmer-end) 50%, var(--shimmer-start) 100%);
     background-size: 200% 100%;
     animation: shimmer 1.8s infinite linear;
   }
@@ -152,4 +154,10 @@ media-player {
   --media-focus-ring-color: rgba(99, 102, 241, 0.5);
   border-radius: 1rem;
   overflow: hidden;
+}
+
+[data-media-player][data-fullscreen] {
+  aspect-ratio: auto !important;
+  width: 100vw !important;
+  height: 100vh !important;
 }
