@@ -92,13 +92,35 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
     // expand this wrapper to fill the viewport via CSS, keeping the video inline so every
     // sibling (controls, quiz/hotspot overlays) keeps rendering on top of it.
     const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
+    const [pseudoFullscreenHeight, setPseudoFullscreenHeight] = useState<number>();
 
     useEffect(() => {
       if (!isPseudoFullscreen) return;
+
+      const vv = window.visualViewport;
+      const updateHeight = () => setPseudoFullscreenHeight(vv?.height ?? window.innerHeight);
+      updateHeight();
+      vv?.addEventListener('resize', updateHeight);
+      window.addEventListener('resize', updateHeight);
+
+      const scrollY = window.scrollY;
       const previousOverflow = document.body.style.overflow;
+      const previousPosition = document.body.style.position;
+      const previousTop = document.body.style.top;
+      const previousWidth = document.body.style.width;
       document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+
       return () => {
+        vv?.removeEventListener('resize', updateHeight);
+        window.removeEventListener('resize', updateHeight);
         document.body.style.overflow = previousOverflow;
+        document.body.style.position = previousPosition;
+        document.body.style.top = previousTop;
+        document.body.style.width = previousWidth;
+        window.scrollTo(0, scrollY);
       };
     }, [isPseudoFullscreen]);
 
@@ -166,9 +188,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
       <div
         className={cn(
           'relative w-full rounded-3xl overflow-hidden border border-white/10 bg-slate-950 shadow-2xl shadow-brand-500/10 group',
-          isPseudoFullscreen && 'fixed inset-0 z-[9999] !w-screen !h-screen !max-w-none rounded-none border-none',
+          isPseudoFullscreen && 'fixed inset-0 z-[9999] !w-screen !max-w-none rounded-none border-none',
           className,
         )}
+        style={isPseudoFullscreen ? { height: pseudoFullscreenHeight ?? '100dvh' } : undefined}
       >
         <MediaPlayer
           ref={playerRef}

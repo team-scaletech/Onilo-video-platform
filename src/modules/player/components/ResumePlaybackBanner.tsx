@@ -23,7 +23,7 @@ export const ResumePlaybackBanner: React.FC<ResumePlaybackBannerProps> = ({
         initial={{ opacity: 0, y: -16, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -16, scale: 0.96 }}
-        className="hidden sm:flex absolute top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-sm p-3.5 rounded-2xl bg-slate-950/95 border border-brand-500/50 backdrop-blur-2xl shadow-2xl text-white items-center justify-between gap-3 pointer-events-auto overflow-hidden"
+        className="flex absolute top-[calc(1rem+env(safe-area-inset-top))] sm:top-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] sm:w-full max-w-sm p-3.5 rounded-2xl bg-slate-950/95 border border-brand-500/50 backdrop-blur-2xl shadow-2xl text-white items-center justify-between gap-3 pointer-events-auto overflow-hidden"
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <div className="p-2 rounded-xl bg-brand-500/20 text-cyanGlow border border-brand-500/30 shrink-0">

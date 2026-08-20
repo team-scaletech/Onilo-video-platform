@@ -142,10 +142,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
   // Keyboard Shortcuts Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        document.activeElement?.tagName === 'INPUT' ||
-        document.activeElement?.tagName === 'TEXTAREA'
-      ) {
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
         return;
       }
 
@@ -191,11 +188,13 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
           resetIdleTimer();
           break;
         case 'ArrowUp':
+          if (isIOS()) break;
           e.preventDefault();
           player.volume = Math.min(1, volume + 0.1);
           resetIdleTimer();
           break;
         case 'ArrowDown':
+          if (isIOS()) break;
           e.preventDefault();
           player.volume = Math.max(0, volume - 0.1);
           resetIdleTimer();
@@ -289,8 +288,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
 
   // Calculate percentages
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const bufferPercent =
-    duration > 0 && buffered.length > 0 ? (buffered.end(buffered.length - 1) / duration) * 100 : 0;
+  const bufferPercent = duration > 0 && buffered.length > 0 ? (buffered.end(buffered.length - 1) / duration) * 100 : 0;
 
   // Real HLS quality renditions reported by Vidstack, sorted highest-first, index preserved for switching
   const qualityOptions = qualities
@@ -317,13 +315,16 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
         togglePlayPause();
       }}
       className={cn(
-        'absolute inset-0 z-20 flex flex-col justify-between pointer-events-auto transition-opacity duration-300 select-none',
+        // touch-manipulation (touch-action: manipulation) stops iOS Safari from firing its
+        // own double-tap-to-zoom on top of the custom double-tap seek gesture below.
+        'absolute inset-0 z-20 flex flex-col justify-between pointer-events-auto transition-opacity duration-300 select-none touch-manipulation',
         showControls || isPaused ? 'opacity-100' : 'opacity-0 cursor-none',
-        className
+        className,
       )}
     >
-      {/* Top Header Ambient Gradient */}
-      <div className="custom-controls-bar p-3 sm:p-4 lg:p-6 bg-gradient-to-b from-slate-950/90 via-slate-950/40 to-transparent flex items-center justify-between">
+      {/* Top Header Ambient Gradient — safe-area padding keeps the title clear of the
+          notch/Dynamic Island when rotated into pseudo-fullscreen landscape */}
+      <div className="custom-controls-bar p-3 sm:p-4 lg:p-6 pt-[calc(0.75rem+env(safe-area-inset-top))] pl-[calc(0.75rem+env(safe-area-inset-left))] pr-[calc(0.75rem+env(safe-area-inset-right))] bg-gradient-to-b from-slate-950/90 via-slate-950/40 to-transparent flex items-center justify-between">
         <div className="flex items-center gap-2 sm:gap-3">
           <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyanGlow animate-ping" />
           <h3 className="font-heading font-extrabold text-xs sm:text-base text-white tracking-tight drop-shadow-md truncate max-w-[180px] sm:max-w-md">
@@ -391,7 +392,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
       </AnimatePresence>
 
       {/* Bottom Custom Control Overlay (with Mobile Safe Area Padding) */}
-      <div className="custom-controls-bar p-3 sm:p-4 lg:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-transparent space-y-2.5 sm:space-y-3">
+      <div className="custom-controls-bar p-3 sm:p-4 lg:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[calc(0.75rem+env(safe-area-inset-left))] pr-[calc(0.75rem+env(safe-area-inset-right))] bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-transparent space-y-2.5 sm:space-y-3">
         {/* Interactive Seek Timeline Progress Bar */}
         <div className="relative group/seeker w-full flex items-center min-h-[24px]">
           {/* Hover Time Tooltip */}
@@ -485,22 +486,27 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                 )}
               </button>
 
-              <div
-                className={cn(
-                  'w-20 transition-all duration-200 overflow-hidden flex items-center hidden md:flex',
-                  showVolumeSlider ? 'opacity-100 max-w-[80px]' : 'opacity-0 max-w-0'
-                )}
-              >
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={isMuted ? 0 : volume}
-                  onChange={(e) => player && (player.volume = parseFloat(e.target.value))}
-                  className="w-full h-1.5 accent-cyanGlow bg-white/20 rounded-lg cursor-pointer"
-                />
-              </div>
+              {/* iOS WebKit makes `volume` read-only (always reflects the hardware buttons,
+                  writes are silently ignored), so a draggable slider there would just be
+                  dead UI — mute/unmute above is the only volume control iOS actually honors. */}
+              {!isIOS() && (
+                <div
+                  className={cn(
+                    'w-20 transition-all duration-200 overflow-hidden flex items-center hidden md:flex',
+                    showVolumeSlider ? 'opacity-100 max-w-[80px]' : 'opacity-0 max-w-0',
+                  )}
+                >
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={isMuted ? 0 : volume}
+                    onChange={(e) => player && (player.volume = parseFloat(e.target.value))}
+                    className="w-full h-1.5 accent-cyanGlow bg-white/20 rounded-lg cursor-pointer"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Time Counter */}
@@ -526,7 +532,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                   'p-2 rounded-xl border text-xs transition-colors flex items-center gap-1 font-semibold',
                   subtitlesEnabled && activeLanguage !== 'off'
                     ? 'bg-cyanGlow/20 border-cyanGlow/40 text-cyanGlow'
-                    : 'bg-transparent border-white/10 text-slate-400 hover:text-white'
+                    : 'bg-transparent border-white/10 text-slate-400 hover:text-white',
                 )}
                 title="Captions / Subtitles Language"
               >
@@ -556,7 +562,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                         'w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center justify-between',
                         !subtitlesEnabled || activeLanguage === 'off'
                           ? 'bg-white/10 text-white font-bold'
-                          : 'text-slate-400 hover:bg-white/10 hover:text-white'
+                          : 'text-slate-400 hover:bg-white/10 hover:text-white',
                       )}
                     >
                       <span>Off</span>
@@ -572,7 +578,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                         'w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center justify-between',
                         subtitlesEnabled && activeLanguage === 'en'
                           ? 'bg-brand-600/30 text-cyanGlow font-bold border border-brand-500/40'
-                          : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                          : 'text-slate-300 hover:bg-white/10 hover:text-white',
                       )}
                     >
                       <div className="flex items-center gap-2">
@@ -581,9 +587,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                         </span>
                         <span>English</span>
                       </div>
-                      {subtitlesEnabled && activeLanguage === 'en' && (
-                        <Check className="w-3.5 h-3.5 text-cyanGlow" />
-                      )}
+                      {subtitlesEnabled && activeLanguage === 'en' && <Check className="w-3.5 h-3.5 text-cyanGlow" />}
                     </button>
 
                     {/* Option 2: German */}
@@ -593,7 +597,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                         'w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center justify-between',
                         subtitlesEnabled && activeLanguage === 'de'
                           ? 'bg-brand-600/30 text-cyanGlow font-bold border border-brand-500/40'
-                          : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                          : 'text-slate-300 hover:bg-white/10 hover:text-white',
                       )}
                     >
                       <div className="flex items-center gap-2">
@@ -602,9 +606,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                         </span>
                         <span>Deutsch (German)</span>
                       </div>
-                      {subtitlesEnabled && activeLanguage === 'de' && (
-                        <Check className="w-3.5 h-3.5 text-cyanGlow" />
-                      )}
+                      {subtitlesEnabled && activeLanguage === 'de' && <Check className="w-3.5 h-3.5 text-cyanGlow" />}
                     </button>
                   </motion.div>
                 )}
@@ -647,7 +649,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                           'w-full text-left px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors flex items-center justify-between',
                           playbackRate === rate
                             ? 'bg-brand-600 text-white shadow-md'
-                            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                            : 'text-slate-300 hover:bg-white/10 hover:text-white',
                         )}
                       >
                         <span>{rate}x</span>
@@ -689,9 +691,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                     </div>
 
                     {qualityOptions.length === 0 ? (
-                      <div className="px-3 py-1.5 text-xs text-slate-400">
-                        Adaptive (source-managed)
-                      </div>
+                      <div className="px-3 py-1.5 text-xs text-slate-400">Adaptive (source-managed)</div>
                     ) : (
                       <>
                         <button
@@ -701,7 +701,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                             'w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between disabled:opacity-50',
                             autoQuality
                               ? 'bg-brand-600/30 text-cyanGlow font-bold border border-brand-500/40'
-                              : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                              : 'text-slate-300 hover:bg-white/10 hover:text-white',
                           )}
                         >
                           <span>Auto{quality ? ` (${quality.height}p)` : ''}</span>
@@ -719,12 +719,11 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                                 'w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between disabled:opacity-50',
                                 isSelected
                                   ? 'bg-brand-600/30 text-cyanGlow font-bold border border-brand-500/40'
-                                  : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                                  : 'text-slate-300 hover:bg-white/10 hover:text-white',
                               )}
                             >
                               <span>
-                                {q.height}p
-                                {q.bitrate ? ` • ${Math.round(q.bitrate / 1000)}kbps` : ''}
+                                {q.height}p{q.bitrate ? ` • ${Math.round(q.bitrate / 1000)}kbps` : ''}
                               </span>
                               {isSelected && <Check className="w-3.5 h-3.5 text-cyanGlow" />}
                             </button>
@@ -743,7 +742,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                           'w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center justify-between',
                           showStats
                             ? 'bg-brand-600/30 text-cyanGlow font-bold border border-brand-500/40'
-                            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                            : 'text-slate-300 hover:bg-white/10 hover:text-white',
                         )}
                       >
                         <span className="flex items-center gap-1.5">
@@ -777,11 +776,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
               className="p-2.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center shrink-0"
               title={isFullscreen || isPseudoFullscreen ? 'Exit Fullscreen (F)' : 'Fullscreen (F)'}
             >
-              {isFullscreen || isPseudoFullscreen ? (
-                <Minimize className="w-4 h-4" />
-              ) : (
-                <Maximize className="w-4 h-4" />
-              )}
+              {isFullscreen || isPseudoFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
             </button>
           </div>
         </div>
