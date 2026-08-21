@@ -7,6 +7,7 @@ import { usePlayer } from '../../../hooks';
 import { usePlayerProgress } from '../../../context/PlayerProgressContext';
 import { getTimelineEventsForVideo } from '../data/mockTimelineEvents';
 import { analyticsService } from '../../../services/analyticsService';
+import { getVideoMimeType } from '../../../utils';
 
 export const DEFAULT_TEXT_TRACKS = [
   {
@@ -43,15 +44,10 @@ export const VideoPlayerContainer: React.FC<VideoPlayerContainerProps> = ({ vide
   const currentTimeRef = useRef(currentTime);
   const durationRef = useRef(duration);
 
-  const videoSrc = useMemo(
-    () => [
-      {
-        src: video.hlsUrl || video.srcUrl,
-        type: 'application/x-mpegURL' as const,
-      },
-    ],
-    [video.hlsUrl, video.srcUrl],
-  );
+  const videoSrc = useMemo(() => {
+    const url = video.hlsUrl || video.srcUrl;
+    return [{ src: url, type: getVideoMimeType(url) }];
+  }, [video.hlsUrl, video.srcUrl]);
 
   // Publish this player instance's controls so sibling components (timeline markers,
   // the configured-overlays sidebar) can seek without reaching into the DOM.
@@ -147,6 +143,10 @@ export const VideoPlayerContainer: React.FC<VideoPlayerContainerProps> = ({ vide
     playerRef.current?.play();
   }, []);
 
+  const handleInteractiveEventTriggered = useCallback(() => {
+    setShowResumeBanner(false);
+  }, []);
+
   const handleResumePlayback = () => {
     playerRef.current?.seek(savedTime);
     playerRef.current?.play();
@@ -194,6 +194,7 @@ export const VideoPlayerContainer: React.FC<VideoPlayerContainerProps> = ({ vide
           videoId={video.id}
           onPauseVideo={pauseVideo}
           onResumeVideo={resumeVideo}
+          onEventTriggered={handleInteractiveEventTriggered}
         />
       </VideoPlayer>
     </div>

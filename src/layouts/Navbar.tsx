@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, User, ChevronDown, LogOut, Menu, X, LayoutDashboard, PlaySquare } from 'lucide-react';
+import { Play, User, ChevronDown, LogOut, Menu, X, LayoutDashboard, PlaySquare, BarChart3 } from 'lucide-react';
 import { useNavigate, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
@@ -190,6 +190,7 @@ export const Navbar: React.FC = () => {
                 {[
                   { name: 'Dashboard Showcase', path: '/', icon: <LayoutDashboard className="w-5 h-5" /> },
                   { name: 'Interactive Player', path: '/player/vid-001', icon: <PlaySquare className="w-5 h-5" />, badge: 'LIVE' },
+                  { name: 'Analytics', path: '/analytics', icon: <BarChart3 className="w-5 h-5" /> },
                 ].map((item) => (
                   <NavLink
                     key={item.path}

@@ -107,4 +107,39 @@ export const MOCK_VIDEOS: VideoMetadata[] = [
       },
     ],
   },
+  {
+    id: 'vid-003',
+    title: 'MP4 Source Test — Progressive Download (non-HLS)',
+    description:
+      'Sanity-check entry for the dynamic MIME-type detection: srcUrl is a plain .mp4 file, so the player should fall back to native playback instead of hls.js.',
+    posterUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&auto=format&fit=crop&q=80',
+    srcUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+    duration: 596,
+    viewsCount: 0,
+    completionRate: 0,
+    author: {
+      name: 'Onilo Creative Labs',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      role: 'Head of Reading Promotion',
+    },
+    tags: ['Testing', 'MP4'],
+    createdAt: '2026-08-21',
+    interactiveMarkers: [
+      {
+        id: 'mark-301',
+        timestamp: 10,
+        type: 'quiz',
+        title: 'MP4 Playback Check',
+        quiz: {
+          id: 'q-03',
+          question: 'Is this source file streaming via HLS or plain MP4?',
+          points: 50,
+          options: [
+            { id: 'opt-3a', text: 'Plain MP4 (progressive download)', isCorrect: true },
+            { id: 'opt-3b', text: 'HLS adaptive stream', isCorrect: false },
+          ],
+        },
+      },
+    ],
+  },
 ];

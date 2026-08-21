@@ -16,6 +16,7 @@ export interface InteractiveOverlayEngineProps {
   videoId: string;
   onPauseVideo?: () => void;
   onResumeVideo?: () => void;
+  onEventTriggered?: () => void;
 }
 
 export const InteractiveOverlayEngine: React.FC<InteractiveOverlayEngineProps> = ({
@@ -24,6 +25,7 @@ export const InteractiveOverlayEngine: React.FC<InteractiveOverlayEngineProps> =
   videoId,
   onPauseVideo,
   onResumeVideo,
+  onEventTriggered,
 }) => {
   const [activeEvent, setActiveEvent] = useState<TimelineEvent | null>(null);
   const engineRef = useRef<TimelineEngine>(new TimelineEngine(events));
@@ -35,6 +37,7 @@ export const InteractiveOverlayEngine: React.FC<InteractiveOverlayEngineProps> =
   useEffect(() => {
     engineRef.current.processTime(currentTime, (triggeredEvent) => {
       setActiveEvent(triggeredEvent);
+      onEventTriggered?.();
       if (triggeredEvent.pauseOnTrigger !== false) {
         onPauseVideo?.();
       }
@@ -43,7 +46,7 @@ export const InteractiveOverlayEngine: React.FC<InteractiveOverlayEngineProps> =
         eventType: triggeredEvent.type,
       });
     });
-  }, [currentTime, onPauseVideo, videoId]);
+  }, [currentTime, onPauseVideo, onEventTriggered, videoId]);
 
   const handleClose = () => {
     if (activeEvent) {

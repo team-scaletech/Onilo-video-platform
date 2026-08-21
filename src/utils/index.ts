@@ -27,6 +27,27 @@ export function isIOS(): boolean {
   return isAppleMobileDevice || isIPadOS;
 }
 
+const EXTENSION_MIME_MAP: Record<string, string> = {
+  m3u8: 'application/x-mpegURL',
+  mpd: 'application/dash+xml',
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  mov: 'video/quicktime',
+  webm: 'video/webm',
+  ogv: 'video/ogg',
+};
+
+/**
+ * Picks the MIME type Vidstack needs from the file extension so the player knows whether
+ * to hand the source to hls.js (HLS), dash.js (DASH), or play it natively (MP4/WebM/etc.) --
+ * rather than assuming every source is an HLS manifest.
+ */
+export function getVideoMimeType(url: string): string {
+  const path = url.split(/[?#]/)[0];
+  const extension = path.split('.').pop()?.toLowerCase() ?? '';
+  return EXTENSION_MIME_MAP[extension] || 'video/mp4';
+}
+
 export function formatNumber(num: number): string {
   if (num >= 1000000) {
     return (num / 1000000).toFixed(1) + 'M';

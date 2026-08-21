@@ -55,14 +55,6 @@ export class TimelineEngine {
   }
 
   public handleSeek(newTime: number) {
-    // Reset triggered status for events scheduled at-or-after newTime if replayOnSeek is true.
-    // Must be >=, not >: an event sitting exactly at newTime can already be marked triggered
-    // from an earlier forward jump that skipped over it without showing it (e.g. jumping
-    // straight from 0s to 190s marks every event in between as "seen" so it doesn't ambush
-    // the viewer later, even though only the closest one to 190s was actually shown). Landing
-    // a backward seek exactly on one of those skipped events -- clicking its marker directly
-    // -- is explicit user intent to see it, so it must be re-armed too, not just events
-    // strictly after the landing point.
     for (const event of this.events) {
       if (event.timestamp >= newTime && event.replayOnSeek !== false) {
         this.triggeredMap.delete(event.id);

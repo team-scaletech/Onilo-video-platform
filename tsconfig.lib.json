@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationDir": "dist-lib/types",
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src/vite-env.d.ts",
+    "src/player",
+    "src/components/ui/VideoPlayer.tsx",
+    "src/modules/player",
+    "src/context/PlayerContext.tsx",
+    "src/context/PlayerProgressContext.tsx",
+    "src/services",
+    "src/types",
+    "src/utils",
+    "src/constants"
+  ]
+}
