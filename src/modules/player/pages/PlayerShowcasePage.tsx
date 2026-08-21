@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   History, Layers,
-  HelpCircle, ShoppingBag, Megaphone, BarChart3, Gamepad2, Mail, MapPin, Play
+  HelpCircle, ShoppingBag, Megaphone, BarChart3, Gamepad2, Mail, MapPin, Play, Crosshair
 } from 'lucide-react';
 import { VideoPlayerContainer } from '../components/VideoPlayerContainer';
 import { TimelineControls } from '../components/TimelineControls';
@@ -22,6 +22,7 @@ const TIMELINE_EVENT_DISPLAY: Record<TimelineEventType, { icon: typeof HelpCircl
   mini_game: { icon: Gamepad2, color: 'text-emerald-400' },
   form: { icon: Mail, color: 'text-pink-400' },
   hotspot: { icon: MapPin, color: 'text-cyanGlow' },
+  click_target: { icon: Crosshair, color: 'text-rose-400' },
 };
 
 export const PlayerShowcasePage: React.FC = () => {

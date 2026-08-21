@@ -1,4 +1,12 @@
-export type TimelineEventType = 'quiz' | 'survey' | 'cta' | 'product_card' | 'form' | 'mini_game' | 'hotspot';
+export type TimelineEventType =
+  | 'quiz'
+  | 'survey'
+  | 'cta'
+  | 'product_card'
+  | 'form'
+  | 'mini_game'
+  | 'hotspot'
+  | 'click_target';
 
 export interface TimelineEvent {
   id: string;

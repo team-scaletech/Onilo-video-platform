@@ -114,7 +114,7 @@ export const MOCK_VIDEOS: VideoMetadata[] = [
       'Sanity-check entry for the dynamic MIME-type detection: srcUrl is a plain .mp4 file, so the player should fall back to native playback instead of hls.js.',
     posterUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&auto=format&fit=crop&q=80',
     srcUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-    duration: 596,
+    duration: 10,
     viewsCount: 0,
     completionRate: 0,
     author: {
@@ -139,6 +139,34 @@ export const MOCK_VIDEOS: VideoMetadata[] = [
             { id: 'opt-3b', text: 'HLS adaptive stream', isCorrect: false },
           ],
         },
+      },
+    ],
+  },
+  {
+    id: 'vid-004',
+    title: 'Big Buck Bunny — Click-the-Object Hotspot Demo',
+    description:
+      'Demo entry for the "click an object" interactive type: asks the viewer to find a butterfly ' +
+      'in the video and click it directly on the paused frame.',
+    posterUrl: 'https://archive.org/download/BigBuckBunny_328/__ia_thumb.jpg',
+    srcUrl: 'https://archive.org/download/BigBuckBunny_328/BigBuckBunny_512kb.mp4',
+    duration: 596,
+    viewsCount: 0,
+    completionRate: 0,
+    author: {
+      name: 'Onilo Creative Labs',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      role: 'Head of Reading Promotion',
+    },
+    tags: ['Testing', 'Hotspot', 'Click Target'],
+    createdAt: '2026-08-21',
+    interactiveMarkers: [
+      {
+        id: 'mark-401',
+        timestamp: 78,
+        type: 'click_target',
+        title: 'Find the Butterfly',
+        description: 'Click the butterfly directly on the paused video frame.',
       },
     ],
   },

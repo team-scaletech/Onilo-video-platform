@@ -23,8 +23,7 @@ const MOCK_TIMELINE_EVENTS_BY_VIDEO: Record<string, TimelineEvent[]> = {
           { id: 'opt-3', text: 'Disables video controls', isCorrect: false },
           { id: 'opt-4', text: 'Only works on mobile phones', isCorrect: false },
         ],
-        explanation:
-          'HLS dynamically switches video quality levels based on bandwidth to prevent buffering stall.',
+        explanation: 'HLS dynamically switches video quality levels based on bandwidth to prevent buffering stall.',
       },
     },
     {
@@ -52,8 +51,7 @@ const MOCK_TIMELINE_EVENTS_BY_VIDEO: Record<string, TimelineEvent[]> = {
         title: 'Pro Interactive Video Suite v2.0',
         price: '$149.00',
         originalPrice: '$299.00',
-        image:
-          'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800&auto=format&fit=crop&q=80',
+        image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800&auto=format&fit=crop&q=80',
         description: 'Enterprise React + Vidstack interactive video platform design system and engine.',
       },
     },
@@ -152,6 +150,23 @@ const MOCK_TIMELINE_EVENTS_BY_VIDEO: Record<string, TimelineEvent[]> = {
         buttonText: 'Enroll Now',
         promoCode: '',
         linkUrl: '#',
+      },
+    },
+  ],
+  'vid-004': [
+    {
+      id: 'evt-click-butterfly-78',
+      timestamp: 78,
+      type: 'click_target',
+      title: 'Find the Butterfly',
+      pauseOnTrigger: true,
+      replayOnSeek: true,
+      data: {
+        question: 'Can you find the butterfly in the video?',
+        target: { x: 23, y: 0, width: 37, height: 62 },
+        successMessage: 'Correct! You found the butterfly.',
+        failureMessage: 'Not quite -- try again.',
+        autoResumeDelayMs: 1800,
       },
     },
   ],

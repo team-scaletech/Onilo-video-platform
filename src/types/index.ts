@@ -1,6 +1,6 @@
 export type Theme = 'dark' | 'light';
 
-export type EventType = 'quiz' | 'hotspot' | 'game' | 'chapter' | 'banner';
+export type EventType = 'quiz' | 'hotspot' | 'game' | 'chapter' | 'banner' | 'click_target';
 
 export interface QuizOption {
   id: string;

@@ -8,6 +8,7 @@ import { ProductCardOverlay } from './ProductCardOverlay';
 import { FormOverlay } from './FormOverlay';
 import { MiniGameOverlay } from './MiniGameOverlay';
 import { HotspotOverlay } from './HotspotOverlay';
+import { ClickTargetOverlay } from './ClickTargetOverlay';
 import { analyticsService } from '../../../services/analyticsService';
 
 export interface InteractiveOverlayEngineProps {
@@ -126,6 +127,15 @@ export const InteractiveOverlayEngine: React.FC<InteractiveOverlayEngineProps> =
 
         {activeEvent.type === 'hotspot' && (
           <HotspotOverlay
+            key={activeEvent.id}
+            data={activeEvent.data}
+            onClose={handleClose}
+            onResumeVideo={onResumeVideo}
+          />
+        )}
+
+        {activeEvent.type === 'click_target' && (
+          <ClickTargetOverlay
             key={activeEvent.id}
             data={activeEvent.data}
             onClose={handleClose}

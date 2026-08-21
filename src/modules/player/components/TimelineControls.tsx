@@ -18,6 +18,7 @@ const EVENT_DOT_COLOR: Record<TimelineEventType, string> = {
   survey: 'bg-blue-400',
   mini_game: 'bg-emerald-400',
   form: 'bg-pink-400',
+  click_target: 'bg-rose-400',
 };
 
 const EVENT_TYPE_LABEL: Record<TimelineEventType, string> = {
@@ -28,6 +29,7 @@ const EVENT_TYPE_LABEL: Record<TimelineEventType, string> = {
   survey: 'Survey',
   mini_game: 'Mini-Game',
   form: 'Form',
+  click_target: 'Find the Object',
 };
 
 export const TimelineControls: React.FC<TimelineControlsProps> = ({ duration, currentTime, events, onSeek }) => {
